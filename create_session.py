@@ -2,8 +2,8 @@ from telethon import TelegramClient
 import asyncio
 
 # ВАЖНО: Замените на ваши данные
-API_ID = 'YOUR_API_ID'
-API_HASH = 'YOUR_API_HASH'
+API_ID = '33916449'  # Замените на ваш API ID
+API_HASH = '9ec8439ac26f8e1ab2f0796890009f52'  # Замените на ваш API HASH
 
 async def create_session():
     """Создание новой сессии Telegram"""
