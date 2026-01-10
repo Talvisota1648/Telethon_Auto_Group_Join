@@ -2,7 +2,7 @@ import asyncio
 import os
 import glob
 from pathlib import Path
-from telethon import TelegramClient, errors
+from telethon import TelegramClient, errors, functions
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import GetDiscussionMessageRequest
 import random
@@ -107,15 +107,42 @@ async def join_channel_with_discussion(client, channel_link, session_name):
             print(f"[{session_name}] Ошибка вступления в {channel_username}: {e}")
             return False
 
-        # Попытка вступить в обсуждение (discussion group)
+        # Попытка вступить в обсуждение (discussion group) - ПРАВИЛЬНЫЙ МЕТОД
         try:
-            full_channel = await client.get_entity(entity)
-            if hasattr(full_channel, 'linked_chat_id') and full_channel.linked_chat_id:
-                discussion_entity = await client.get_entity(full_channel.linked_chat_id)
-                await client(JoinChannelRequest(discussion_entity))
-                print(f"[{session_name}] ✓ Вступил в обсуждение канала {channel_username}")
+            # Получаем полную информацию о канале через GetFullChannelRequest
+            full_channel_req = await client(functions.channels.GetFullChannelRequest(channel=entity))
+
+            # full_chat содержит linked_chat_id
+            full_chat = full_channel_req.full_chat
+
+            # Проверяем наличие linked_chat_id (ID обсуждения)
+            if hasattr(full_chat, 'linked_chat_id') and full_chat.linked_chat_id:
+                linked_chat_id = full_chat.linked_chat_id
+
+                # Находим обсуждение в списке chats
+                discussion_group = None
+                for chat in full_channel_req.chats:
+                    if chat.id == linked_chat_id:
+                        discussion_group = chat
+                        break
+
+                if discussion_group:
+                    # Вступаем в обсуждение
+                    try:
+                        await client(JoinChannelRequest(discussion_group))
+                        print(f"[{session_name}] ✓ Вступил в обсуждение: {discussion_group.title}")
+                        await asyncio.sleep(random.uniform(1, 3))
+                    except errors.UserAlreadyParticipantError:
+                        print(f"[{session_name}] ⚠ Уже в обсуждении: {discussion_group.title}")
+                    except Exception as e:
+                        print(f"[{session_name}] Ошибка вступления в обсуждение: {e}")
+                else:
+                    print(f"[{session_name}] ℹ Обсуждение не найдено в списке chats")
+            else:
+                print(f"[{session_name}] ℹ У канала нет привязанного обсуждения")
+
         except Exception as e:
-            print(f"[{session_name}] Обсуждение недоступно или ошибка: {e}")
+            print(f"[{session_name}] Ошибка при получении информации об обсуждении: {e}")
 
         return True
 
